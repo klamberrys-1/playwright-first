@@ -1,0 +1,44 @@
+name: Playwright Tests E2E Pipeline
+
+# ¿Cuándo se va a disparar este pipeline?
+on:
+  push:
+    branches: [ main, master ] # Se ejecuta automáticamente cuando subes código a estas ramas
+  pull_request:
+    branches: [ main, master ] # Se ejecuta cuando abres un PR para fusionar cambios
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest # Usamos un servidor Linux ultra rápido y limpio en la nube
+
+    steps:
+    # 1. Copia el código de tu repositorio dentro de la máquina virtual de GitHub
+    - uses: actions/checkout@v4
+
+    # 2. Configura el entorno de ejecución instalando Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/* # Usa la última versión estable (Long Term Support)
+
+    # 3. Instala todas las dependencias del package.json de forma limpia
+    - name: Install dependencies
+      run: npm ci
+
+    # 4. Descarga los binarios limpios de los navegadores de Playwright (Chromium, Firefox, WebKit)
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    # 5. Ejecuta tu suite de pruebas en paralelo (por defecto corre en modo headless en CI)
+    - name: Run Playwright tests
+      run: npx playwright test
+
+    # 6. Paso de Rescate (Teardown/Artifacts): Si la prueba falla o pasa, guarda el reporte HTML
+    - name: Upload Playwright Report Artifact
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }} # Asegura que se ejecute incluso si las pruebas fallaron
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30 # Guarda el reporte por 30 días para auditoría
